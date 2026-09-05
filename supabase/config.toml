@@ -19,3 +19,6 @@ port = 55427
 
 [db.pooler]
 port = 55429
+
+[storage.vector]
+enabled = false
