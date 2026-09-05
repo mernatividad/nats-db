@@ -1,7 +1,7 @@
 [api]
 enabled = true
 port = 55421
-schemas = ["public", "graphql_public", "board_pulse", "japanprchecker", "wheretayo"]
+schemas = ["public", "graphql_public", "board_pulse", "japanprchecker", "wheretayo", "thebudolfinds"]
 
 # 54322 is reserved by Windows on some developer machines; keep the local database
 # outside the reserved range; all local service ports are kept consistent below.
