@@ -83,7 +83,7 @@ create table wheretayo.venue_attribute_evidence (
 
 create index venues_neighborhood_id_idx on wheretayo.venues (neighborhood_id);
 create index venues_publication_status_idx on wheretayo.venues (publication_status);
-create index venues_name_trgm_idx on wheretayo.venues using gin (name extensions.gin_trgm_ops);
+create index venues_name_trgm_idx on wheretayo.venues using gin (name gin_trgm_ops);
 create index venues_location_idx on wheretayo.venues using gist (location);
 create index venue_vibes_vibe_id_idx on wheretayo.venue_vibes (vibe_id);
 
