@@ -2,7 +2,9 @@
 
 Authoritative Supabase database project for PRC Board Pulse.
 
-This repository owns the Supabase CLI configuration, migration history, archived migrations, and database verification SQL used by the `nats22` application. The application repository consumes the remote `board_pulse` schema but does not contain or create migrations.
+This repository owns the Supabase CLI configuration, migration history, archived migrations, and database verification SQL used by the `nats22` and Japan PR Checker applications. Application repositories consume their configured schemas but do not contain or create migrations.
+
+Japan PR Checker uses the `japanprchecker` schema. Its migration files must create and address that schema explicitly; do not add Japan PR Checker tables, functions, or queries to `public`.
 
 ## Local database
 
