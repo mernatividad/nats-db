@@ -35,3 +35,27 @@ where table_schema = 'thebudolfinds'
   and table_name in ('users', 'profiles', 'reports', 'audit_logs')
   and column_name in ('id', 'role', 'reporter_id', 'actor_id')
 order by table_name, column_name;
+
+-- Assertion-style live authorization checks. Any violation aborts the query.
+do $$
+declare
+  public_table text;
+begin
+  foreach public_table in array array['products', 'product_variants', 'merchant_listings', 'price_observations', 'score_snapshots'] loop
+    if not has_table_privilege('anon', format('thebudolfinds.%I', public_table), 'SELECT') then
+      raise exception 'anon cannot read intended public catalog table %', public_table;
+    end if;
+    if not has_table_privilege('authenticated', format('thebudolfinds.%I', public_table), 'SELECT') then
+      raise exception 'authenticated cannot read intended public catalog table %', public_table;
+    end if;
+  end loop;
+
+  foreach public_table in array array['users', 'sessions', 'accounts', 'verifications', 'profiles', 'reports', 'audit_logs', 'import_runs', 'import_quarantine'] loop
+    if has_table_privilege('anon', format('thebudolfinds.%I', public_table), 'SELECT') then
+      raise exception 'anon can read private table %', public_table;
+    end if;
+    if has_table_privilege('authenticated', format('thebudolfinds.%I', public_table), 'SELECT') then
+      raise exception 'authenticated can read private table %', public_table;
+    end if;
+  end loop;
+end $$;
