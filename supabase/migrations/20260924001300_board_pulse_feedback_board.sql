@@ -1,0 +1,27 @@
+-- PRC Board Pulse feedback board. Better Auth identity is server-managed.
+create schema if not exists board_pulse;
+set search_path = board_pulse, extensions;
+create table if not exists board_pulse.feedback_profiles (user_id text primary key references board_pulse."user" ("id") on delete cascade, display_name varchar(40) not null check (char_length(trim(display_name)) between 2 and 40), updated_at timestamptz not null default now());
+create table if not exists board_pulse.feedback_posts (id uuid primary key default gen_random_uuid(), user_id text not null references board_pulse."user" ("id") on delete cascade, title varchar(120) not null check (char_length(trim(title)) between 3 and 120), description varchar(2000) not null check (char_length(trim(description)) between 10 and 2000), category text not null check (category in ('feature', 'bug', 'content', 'other')), display_name varchar(40) not null check (char_length(trim(display_name)) between 2 and 40), page_path varchar(500) check (page_path is null or (left(page_path, 1) = '/' and position('?' in page_path) = 0)), context jsonb not null default '{}'::jsonb, status text not null default 'under_review' check (status in ('under_review', 'planned', 'in_progress', 'completed', 'declined', 'duplicate')), official_response varchar(2000), moderation_reason varchar(1000), merged_into_id uuid references board_pulse.feedback_posts (id) on delete set null, vote_count integer not null default 0 check (vote_count >= 0), published_at timestamptz, archived_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists board_pulse.feedback_votes (post_id uuid not null references board_pulse.feedback_posts (id) on delete cascade, user_id text not null references board_pulse."user" ("id") on delete cascade, created_at timestamptz not null default now(), primary key (post_id, user_id));
+create table if not exists board_pulse.feedback_reports (id uuid primary key default gen_random_uuid(), post_id uuid not null references board_pulse.feedback_posts (id) on delete cascade, reporter_user_id text not null references board_pulse."user" ("id") on delete cascade, reason varchar(80) not null, details varchar(1000) not null default '', status text not null default 'open' check (status in ('open', 'resolved', 'dismissed')), created_at timestamptz not null default now(), resolved_at timestamptz);
+create table if not exists board_pulse.feedback_deletion_requests (id uuid primary key default gen_random_uuid(), post_id uuid references board_pulse.feedback_posts (id) on delete set null, user_id text not null references board_pulse."user" ("id") on delete cascade, reason varchar(1000) not null default '', status text not null default 'open' check (status in ('open', 'completed', 'denied')), created_at timestamptz not null default now(), resolved_at timestamptz);
+create table if not exists board_pulse.feedback_audit_log (id uuid primary key default gen_random_uuid(), post_id uuid references board_pulse.feedback_posts (id) on delete set null, actor_user_id text references board_pulse."user" ("id") on delete set null, action text not null, details jsonb not null default '{}'::jsonb, created_at timestamptz not null default now());
+create index if not exists feedback_posts_public_idx on board_pulse.feedback_posts (vote_count desc, created_at desc) where archived_at is null and status in ('planned', 'in_progress', 'completed', 'declined');
+create index if not exists feedback_posts_user_idx on board_pulse.feedback_posts (user_id, created_at desc);
+create index if not exists feedback_reports_status_idx on board_pulse.feedback_reports (status, created_at desc);
+create index if not exists feedback_deletion_requests_status_idx on board_pulse.feedback_deletion_requests (status, created_at desc);
+create or replace function board_pulse.touch_feedback_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end; $$;
+drop trigger if exists feedback_profiles_touch_updated_at on board_pulse.feedback_profiles;
+create trigger feedback_profiles_touch_updated_at before update on board_pulse.feedback_profiles for each row execute function board_pulse.touch_feedback_updated_at();
+drop trigger if exists feedback_posts_touch_updated_at on board_pulse.feedback_posts;
+create trigger feedback_posts_touch_updated_at before update on board_pulse.feedback_posts for each row execute function board_pulse.touch_feedback_updated_at();
+alter table board_pulse.feedback_profiles enable row level security;
+alter table board_pulse.feedback_posts enable row level security;
+alter table board_pulse.feedback_votes enable row level security;
+alter table board_pulse.feedback_reports enable row level security;
+alter table board_pulse.feedback_deletion_requests enable row level security;
+alter table board_pulse.feedback_audit_log enable row level security;
+revoke all on table board_pulse.feedback_profiles, board_pulse.feedback_posts, board_pulse.feedback_votes, board_pulse.feedback_reports, board_pulse.feedback_deletion_requests, board_pulse.feedback_audit_log from anon, authenticated;
+grant select, insert, update, delete on table board_pulse.feedback_profiles, board_pulse.feedback_posts, board_pulse.feedback_votes, board_pulse.feedback_reports, board_pulse.feedback_deletion_requests, board_pulse.feedback_audit_log to service_role;
+
